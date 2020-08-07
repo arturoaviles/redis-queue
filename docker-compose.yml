@@ -1,0 +1,59 @@
+version: "3.4"
+
+services:
+  queue-producer:
+    image: queue-producer
+    build:
+      context: ./producer
+      dockerfile: Dockerfile
+    ports:
+      - 11000:11000
+    environment:
+      FLASK_APP: "producer.py"
+      FLASK_ENV: "development"
+      REDIS_HOST: redis
+      REDIS_PORT: "6379"
+      REDIS_PASSWORD: ""
+      REDIS_DB: "0"
+      REDIS_QUEUE: "queue:message"
+    depends_on:
+      - redis
+
+  redis:
+    image: redis:latest
+    ports:
+      - 6379:6379
+    volumes:
+      - type: volume
+        source: redis-data
+        target: /data
+
+  queue-consumer:
+    image: queue-consumer
+    build:
+      context: ./consumer
+      dockerfile: Dockerfile
+    environment:
+      REDIS_HOST: redis
+      REDIS_PORT: "6379"
+      REDIS_PASSWORD: ""
+      REDIS_DB: "0"
+      REDIS_QUEUE: "queue:message"
+      ENDING_API: "http://queue-ending-api:12000"
+    depends_on:
+      - redis
+      - queue-ending-api
+
+  queue-ending-api:
+    image: queue-ending-api
+    build:
+      context: ./ending_api
+      dockerfile: Dockerfile
+    ports:
+      - 12000:12000
+    environment:
+      FLASK_APP: "ending_api.py"
+      FLASK_ENV: "development"
+
+volumes:
+  redis-data: {}
